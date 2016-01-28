@@ -4,5 +4,28 @@
   <h1>Events list</h1>
 </div>
 
-<p class="lead">Pin a fixed-height footer to the bottom of the viewport in desktop browsers with this custom HTML and CSS. A fixed navbar has been added with <code>padding-top: 60px;</code> on the <code>body > .container</code>.</p>
+{% for event in events %}
+<div class="media">
+  <!--<div class="media-left">
+      <img class="media-object" src="..." alt="...">
+    </a>
+  </div>-->
+  <div class="media-body">
+    <h4 class="media-heading">{{ event.id }}</h4>
+    <div class="row">
+      <div class="col-md-6">
+        <table class="table table-condensed">
+          <tr><td>Start time:</td><td>{{ event.time.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+          <tr><td>Total messages:</td><td><span class="badge">{{ event.messages }}</span></td></tr>
+          <tr><td>Status:</td><td><span class="label label-{% if event.status=='real' %}success{% else %}warning{% endif %}">{{ event.status }}</span></td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <p>Text about event. Description</p>
+      </div>
+    </div>
+    <a class="btn btn-default" href="{{ event.id }}" role="button">Go to event &raquo;</a>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

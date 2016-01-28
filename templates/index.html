@@ -1,10 +1,42 @@
 {% extends "base.html" %}
 {% block body %}
 <div class="page-header">
-  <h1>Sticky footer with fixed navbar</h1>
+  <h1>Statistics</h1>
 </div>
 
-<p class="lead">Pin a fixed-height footer to the bottom of the viewport in desktop browsers with this custom HTML and CSS. A fixed navbar has been added with <code>padding-top: 60px;</code> on the <code>body > .container</code>.</p>
+<div class="row">
+  <div class="col-md-6">
+    <div class="panel panel-default">
+      <div class="panel-heading">Total messages in database</div>
+      <table class="table" id="msg_stat">
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
 
-<p>Back to <a href="../sticky-footer">the default sticky footer</a> minus the navbar.</p>
+{% block jscript %}
+<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/1.4.5/numeral.min.js"></script>
+<script>
+function updateStats() {
+	$.getJSON( "stats/messages.json", function( data ) {
+		clearElement("msg_stat");
+		$.each( data, function( key, val ) {
+			$("#msg_stat").append("<tr><td>"+key+"</td><td style='text-align: right;'>"+numeral(val).format('0,0')+"</td></tr>");
+		});
+	});
+	setTimeout(updateStats, 5000);
+};
+
+function clearElement(elem_id) {
+	var Node = document.getElementById(elem_id);
+	while (Node.firstChild) {
+		Node.removeChild(Node.firstChild);
+	}
+};
+
+$(document).bind('ready', function () {
+	updateStats();
+});
+</script>
 {% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block body %}
+
+<ol class="breadcrumb">
+  <li><a href="./">Events</a></li>
+  <li class="active">{{ data.id }}</li>
+</ol>
+
+<div class="jumbotron">
+  <h1>{{ data.id }}</h1>
+  <p>Text description will be here</p>
+  <table class="table table-condensed">
+    <tr><td>Start time:</td><td>{{ data.time.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+    <tr><td>Total messages:</td><td><span class="badge">{{ data.messages }}</span></td></tr>
+    <tr><td>Status:</td><td><span class="label label-{% if data.status=='real' %}success{% else %}warning{% endif %}">{{ data.status }}</span></td></tr>
+  </table>
+</div>
+
+{% endblock %}
