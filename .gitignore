@@ -1,0 +1,7 @@
+/venv
+*.pyc
+*.ipynb
+*.rdb
+*.DS_Store
+settings.py
+/.ipynb_checkpoints
