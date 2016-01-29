@@ -5,13 +5,46 @@
 </div>
 
 <div class="row">
-  <div class="col-md-6">
+  <div class="col-lg-4 col-md-6 col-sm-6 col-xs-12">
     <div class="panel panel-default">
-      <div class="panel-heading">Total messages in database</div>
+      <div class="panel-heading">Messages in database</div>
       <table class="table" id="msg_stat">
+        <tr><th>Network</th><th style='text-align: right'>Total</th><th style='text-align: right'>Last hour</th></tr>
+        <tr><td>Twitter</td><td style='text-align: right' id="tw_total"></td><td style='text-align: right' id="tw_hour"></td></tr>
+        <tr><td>Instagram</td><td style='text-align: right' id="ig_total"></td><td style='text-align: right' id="ig_hour"></td></tr>
+        <tr><td>VKontakte</td><td style='text-align: right' id="vk_total"></td><td style='text-align: right' id="vk_hour"></td></tr>
       </table>
     </div>
   </div>
+
+  <div class="col-lg-4 col-md-6 col-sm-6 col-xs-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">Events</div>
+      <table class="table">
+        <tr><th></th><th>Total</th><th>Last 24h</th></tr>
+        <tr><td>Event-candidates</td><td></td><td></td></tr>
+        <tr><td>Valid events</td><td></td><td></td></tr>
+        <tr><td>Verified</td><td></td><td></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-4 col-md-6 col-sm-6 col-xs-12">
+    <div class="panel panel-default">
+      <div class="panel-heading">Events classificator</div>
+      <div class="panel-body">
+      	This is a DecisionTree Classifier.<br/>
+      	When it was rebuilt<br/>
+      	Parameters:
+      	<ul>
+      		<li>Accuracy: xxx</li>
+      		<li>Precision: xxx</li>
+      		<li>Recall: zzz</li>
+      	</ul>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}
 
@@ -20,19 +53,12 @@
 <script>
 function updateStats() {
 	$.getJSON( "stats/messages.json", function( data ) {
-		clearElement("msg_stat");
 		$.each( data, function( key, val ) {
-			$("#msg_stat").append("<tr><td>"+key+"</td><td style='text-align: right;'>"+numeral(val).format('0,0')+"</td></tr>");
+			$("#msg_stat #"+key+"_total").text(numeral(val.total).format('0a'));
+			$("#msg_stat #"+key+"_hour").text(numeral(val.hour).format('+0,0'));
 		});
 	});
 	setTimeout(updateStats, 5000);
-};
-
-function clearElement(elem_id) {
-	var Node = document.getElementById(elem_id);
-	while (Node.firstChild) {
-		Node.removeChild(Node.firstChild);
-	}
 };
 
 $(document).bind('ready', function () {

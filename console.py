@@ -8,6 +8,7 @@ from settings import CREDENTIALS, MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_
 from md5 import new
 from utilities import get_menu, mysql
 from json import dumps as jdumps
+from datetime import datetime, timedelta
 
 # Blueprints
 from bp_events import event_page
@@ -56,18 +57,19 @@ def requires_auth(f):
 @requires_auth
 def total_messages():
 	cursor = mysql.connection.cursor()
-	cursor.execute('''SELECT network, COUNT(*) FROM tweets GROUP BY network;''')
-	data = cursor.fetchall()
-
-	# Terrible code, I know.
-	net_data = { 'Twitter':0,'Instagram':0,'VKontakte':0 }
-	for line in data:
-		if line[0] == 1:
-			net_data['Twitter'] = line[1]
-		elif line[0] == 2:
-			net_data['Instagram'] = line[1]
-		elif line[0] == 3:
-			net_data['VKontakte'] = line[1]
+	cursor.execute('''SELECT network, COUNT(*) FROM tweets GROUP BY network ORDER BY network ASC;''')
+	data_all = cursor.fetchall()
+	cursor.execute('''SELECT network, COUNT(*) FROM tweets WHERE tstamp >= %s GROUP BY network ORDER BY network ASC;''', (datetime.utcnow() - timedelta(hours=1),))
+	data_hour = {k:v for k,v in cursor.fetchall()}
+	net_data = {k:{'total':v[1],'hour':0} for k,v in zip(['tw','ig','vk'], data_all)}
+	for k in data_hour.keys():
+		if k == 1:
+			net = 'tw'
+		elif k == 2:
+			net = 'ig'
+		elif k == 3:
+			net = 'vk'
+		net_data[net]['hour'] = data_hour[k]
 	return jdumps(net_data)
 
 @app.route("/")
