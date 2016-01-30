@@ -11,13 +11,14 @@
     <div class="row">
       <div class="col-md-6">
         <table class="table table-condensed">
-          <tr><td>Start time:</td><td>{{ event.time.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+          <tr><td>Start time:</td><td>{{ event.start.strftime('%d %B, %H:%M') }}</td></tr>
+          <tr><td>Duration:</td><td>{{ event.duration }}</td></tr>
           <tr><td>Total messages:</td><td><span class="badge">{{ event.messages }}</span></td></tr>
           <tr><td>Status:</td><td><span class="label label-{% if event.status=='real' %}success{% else %}warning{% endif %}">{{ event.status }}</span></td></tr>
         </table>
       </div>
       <div class="col-md-6">
-        <p>Text about event. Description</p>
+        <p>{{ event.description }}</p>
       </div>
     </div>
     <a class="btn btn-default" href="{{ event.id }}" role="button">Go to event &raquo;</a>

@@ -8,12 +8,27 @@
 
 <div class="jumbotron">
   <h1>{{ data.id }}</h1>
-  <p>Text description will be here</p>
+  <p> {{ data.description }}</p>
   <table class="table table-condensed">
-    <tr><td>Start time:</td><td>{{ data.time.strftime('%Y-%m-%d %H:%M') }}</td></tr>
-    <tr><td>Total messages:</td><td><span class="badge">{{ data.messages }}</span></td></tr>
+    <tr><td>Start time:</td><td>{{ data.start.strftime('%Y-%m-%d %H:%M') }}</td></tr>
+    <tr><td>Total messages:</td><td><span class="badge">{{ data.messages|length }}</span></td></tr>
     <tr><td>Status:</td><td><span class="label label-{% if data.status=='real' %}success{% else %}warning{% endif %}">{{ data.status }}</span></td></tr>
   </table>
+</div>
+
+<div class="row">
+{% for message in data.messages %}
+  <div class="col-lg-3 col-md-4 col-sm-6 col-xs-12">
+    <div class="thumbnail">
+      <img src="{{ message.media }}">
+      <div class="caption">
+        <p>{{ message.text }}</p>
+        <p class="label label-info">{{ message.network }}</p>
+        <p class="pull-right">{{ message.time.strftime('%H:%M:%S') }}</p>
+      </div>
+    </div>
+  </div>
+{% endfor %}
 </div>
 
 {% endblock %}
