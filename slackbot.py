@@ -56,15 +56,14 @@ class EditorBot(object):
 			message = [x.strip() for x in event['text'].split(' ')]
 			if message[1] == 'help':
 				reply = self.get_help(message[2:])
-				return self.add_usermention(event['user'], reply)
 			elif message[1] == 'show':
 				reply = self.get_data_to_show(message[2:])
-				return self.add_usermention(event['user'], reply)
 			elif message[1] == 'update':
-				return self.execute_update(message[2:])
+				reply = self.execute_update(message[2:])
 			else:
-				reply = self.add_usermention(event['user'], 'Unknown command, use "@editor help" for full commands list.')
-				return reply
+				reply = 'Unknown command, use "@editor help" for full commands list.'
+			reply = {'message':self.add_usermention(event['user'], reply), 'channel':event['channel']}
+			return reply
 
 	def add_usermention(self, userid, text):
 		"""
