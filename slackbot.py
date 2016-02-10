@@ -50,7 +50,7 @@ class EditorBot(object):
 		Method for preparing reply: it checks, if message was published in newsroom channel,
 		if it starts with editorbot nickname, and if it has known command to execute.
 		"""
-		if event['type'] != 'message' or 'subtype' in event.keys() or event['channel'] != 'C0LQ4S7SR':
+		if 'type' not in event.keys() or event['type'] != 'message' or 'subtype' in event.keys() or event['channel'] != 'C0LQ4S7SR':
 			return
 		if event['text'].startswith('<@U0LPX4E05>'):
 			message = [x.strip() for x in event['text'].split(' ')]
@@ -73,13 +73,22 @@ class EditorBot(object):
 
 	def get_help(self, tokens):
 		"""
-
+		Method for formulating answer to help command.
 		"""
-		return "Currently working commands:\n- *show*\n- *update*\n- *help*\nSooner here will be overall help and help for different commands from docstrings."
+		if not tokens:
+			return "I will try to help you. Currently working commands:\n- *show*\n- *update*\n- *help*\nSooner here will be overall help and help for different commands from docstrings."
+		elif tokens[0] == 'show':
+			return 'here you are:\n'+self.get_data_to_show.__doc__
+		elif tokens[0] == 'update':
+			return 'here you are:\n'+self.execute_update.__doc__
 
 	def get_data_to_show(self, tokens):
 		"""
-
+		*Command: "@editor show ..."*
+		This command is used to show some data. There are several options to show:
+		- eventlist [time interval] - show list of multiple events in a short form;
+		- event [event id] - show full info about specific event;
+		- statistics [time interval] - show database stats during specified period.
 		"""
 		if tokens[0] == 'eventlist':
 			pass
@@ -91,6 +100,10 @@ class EditorBot(object):
 			return 'Unknown object to show. Use "@editor help show" for more info.'
 
 	def execute_update(self, tokens):
+		"""
+		*Command: "@editor update ..."*
+		This command is used to update some data on events in the database. Can be used to verify events, change description.
+		"""
 		return "Currently updates are not executed."
 
 class SlackEvent(object):
