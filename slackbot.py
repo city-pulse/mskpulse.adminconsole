@@ -266,7 +266,7 @@ class SlackEvent(object):
 				]
 			}
 			if 'media' in m_list[i]:
-				m_hash['thumb_url'] = e_dict['thumbnail']
+				m_hash['thumb_url'] = m_list[i]['media']
 			msgs.append(m_hash)
 		return msgs
 
