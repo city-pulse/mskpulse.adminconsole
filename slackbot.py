@@ -41,7 +41,7 @@ class EditorBot(object):
 			return
 		if event['text'].startswith('<@U0LPX4E05>'):
 			message = [x.strip() for x in event['text'].split(' ')]
-			reply = {'channel':event['channel']}
+			reply = {'channel': event['channel'], 'as_user': True}
 			if message[1] == 'help':
 				reply['text'] = self.add_usermention(event['user'], self.get_help(message[2:]))
 			elif message[1] == 'show':
@@ -106,10 +106,11 @@ class EditorBot(object):
 		"""
 		return "Currently updates are not executed."
 
-	def get_event(self, event_id):
+	def get_event(self, tokens):
 		"""
 		Method to look event by id (TBD: part of id) in the SQL and Redis DB's, and return it's full string representation.
 		"""
+		event_id = tokens[0]
 		if self.redis.keys("event:{}".format(event_id)):
 			event_dict = self.redis.hgetall("event:{}".format(event_id))
 			event_dict['start'] = datetime.strptime(event_dict['start'], '%Y-%m-%d %H:%M:%S')
@@ -122,7 +123,19 @@ class EditorBot(object):
 			except IndexError:
 				return {'text':'I don\'t know event with such id. :('}
 		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
-		return {'text':'here you are:', 'attachments': dumps([event.event_hash()])}
+		if len(tokens) == 1 or tokens[1] == 'short':
+			attachments = [event.event_hash()]
+		elif tokens[1] == 'top':
+			try:
+				num = int(tokens[2])
+			except:
+				num = 5
+			attachments = [event.event_hash()] + event.messages_hash(n=num)
+		elif tokens[1] == 'full':
+			attachments = [event.event_hash()] + event.messages_hash(n=1000)
+		else:
+			attachments = [event.event_hash()]
+		return {'text':'here you are:', 'attachments': dumps(attachments)}
 
 class SlackEvent(object):
 	"""
@@ -199,7 +212,7 @@ class SlackEvent(object):
 		messages = sorted(self.messages.values(), key = lambda x:x['token_score'], reverse=True)
 		for item in messages:
 			if item['token_score'] > 0:
-				e = {'text':item['text'], 'network':nets[item['network']], 'time': item['tstamp'].strftime('%Y-%m-%d %H:%M:%S')}
+				e = {'text':item['text'], 'network':nets[item['network']], 'time': item['tstamp'].strftime('%d %b %H:%M')}
 				if 'media' in item.keys():
 					e['media'] = item['media']
 				msgs.append(e)
@@ -207,7 +220,7 @@ class SlackEvent(object):
 
 	def event_string(self):
 		e_dict = self.event_representation()
-		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], e_dict['duration'], e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
+		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], self.duration_representation(), e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
 		return e_str
 
 	def event_hash(self):
@@ -231,11 +244,47 @@ class SlackEvent(object):
 			'fields':[
 				{'title':'Status', 'value':e_dict['status'], 'short':True},
 				{'title':'Messages', 'value':len(e_dict['messages']), 'short':True},
-				{'title':'Duration', 'value':int(e_dict['duration']), 'short':True}
+				{'title':'Duration', 'value':self.duration_representation(), 'short':True}
 			],
 			'thumb_url':e_dict['thumbnail']
 			}
 		return e_hash
+
+	def messages_hash(self, n=5):
+		msgs = []
+		m_list = self.messages_representation()
+		if len(e_dict['messages']) < n:
+			n = len(e_dict['messages'])
+		for i in range(n):
+			m_hash = {
+				'fallback':m_list[i]['text'],
+				'color': '#666666',
+				'text': m_list[i]['text'],
+				'fields':[
+					{'title':'Network', 'value':m_list[i]['network'], 'short':True},
+					{'title':'Pubtime', 'value':m_list[i]['time'], 'short':True}
+				]
+			}
+			if 'media' in m_list[i]:
+				m_hash['thumb_url'] = e_dict['thumbnail']
+			msgs.append(m_hash)
+		return msgs
+
+	def duration_representation(self):
+		val = int(self.duration)
+		secs = val%60
+		mins = val//60
+		if not mins:
+			return '{} seconds'.format(secs)
+		hours = mins//60
+		mins = mins%60
+		if not hours:
+			return '{} min {} sec'.format(mins, secs)
+		days = hours//24
+		hours = hours%24
+		if not days:
+			return '{} h {} min'.format(hours, mins)
+		return '{} d {} hours'.format(days, hours)
 
 if __name__ == '__main__':
 	bot =  EditorBot(SLACK_TOKEN)
