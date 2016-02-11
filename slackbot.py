@@ -138,7 +138,6 @@ class SlackEvent(object):
 		q = '''SELECT * FROM tweets WHERE id in ({});'''.format(','.join(['"'+str(x)+'"' for x in self.messages.keys()]))
 		data = exec_mysql(q, self.mysql)[0]
 		for item in data:
-			item['tstamp'] = item['tstamp'].strftime('%Y-%m-%d %H:%M:%S')
 			self.messages[item['id']].update(item)
 
 	def get_media_data(self):
@@ -175,6 +174,18 @@ class SlackEvent(object):
 			'messages':self.messages_representation()
 		}
 		return e_dict
+
+	def messages_representation(self):
+		msgs = []
+		nets = {1:'Twitter', 2:'Instagram', 3:'VKontakte'}
+		messages = sorted(self.messages.values(), key = lambda x:x['token_score'], reverse=True)
+		for item in messages:
+			if item['token_score'] > 0:
+				e = {'text':item['text'], 'network':nets[item['network']], 'time': item['tstamp'].strftime('%Y-%m-%d %H:%M:%S')}
+				if 'media' in item.keys():
+					e['media'] = item['media']
+				msgs.append(e)
+		return msgs
 
 if __name__ == '__main__':
 	bot =  EditorBot(SLACK_TOKEN)
