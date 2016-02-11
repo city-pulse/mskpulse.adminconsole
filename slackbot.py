@@ -211,7 +211,7 @@ class SlackEvent(object):
 		return e_str
 
 	def event_hash(self):
-		e_dict = event_representation()
+		e_dict = self.event_representation()
 		if e_dict['status'] == 'confirmed real':
 			color = '#98D1CB'
 		elif e_dict['status'] == 'confirmed fake':
