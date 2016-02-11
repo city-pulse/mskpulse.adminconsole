@@ -93,7 +93,7 @@ class EditorBot(object):
 			if len(tokens) == 1:
 				return {'text': 'Specify event id to show.'}
 			else:
-				return self.get_event(tokens[1])
+				return self.get_event(tokens[1:])
 		elif tokens[0] == 'statistics':
 			return {'text':'This method is not yet implemented.'}
 		else:
