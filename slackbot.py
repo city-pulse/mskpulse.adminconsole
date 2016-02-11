@@ -107,7 +107,7 @@ class EditorBot(object):
 				event_dict = exec_mysql(q, self.mysql)[0][0]
 			except IndexError:
 				return 'I don\'t know event with such id. :('
-		event = SlackEvent(start=event_data['start'], end=event_data['end'], validity=event_data['validity'], description=event_data['description'], dump=event_data['dumps'])
+		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
 		return str(event.event_representation())
 
 class SlackEvent(object):
