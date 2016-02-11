@@ -25,7 +25,7 @@ class EditorBot(object):
 				if event:
 					reply = self.prepare_reply(event[0])
 					if reply:
-						self.socket.api_call('chat.postMessage', post_data = reply)
+						self.socket.api_call('chat.postMessage', **reply)
 					#elif reply:
 					#	self.socket.rtm_send_message(reply['channel'], reply['message'])
 				sleep(1)
@@ -122,7 +122,7 @@ class EditorBot(object):
 			except IndexError:
 				return {'text':'I don\'t know event with such id. :('}
 		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
-		return {'text':'here you are:', 'attachments': [event.event_hash()]}
+		return {'text':'here you are:', 'attachments': dumps([event.event_hash()])}
 
 class SlackEvent(object):
 	"""
