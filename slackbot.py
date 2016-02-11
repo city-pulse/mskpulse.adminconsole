@@ -246,8 +246,9 @@ class SlackEvent(object):
 				{'title':'Messages', 'value':len(e_dict['messages']), 'short':True},
 				{'title':'Duration', 'value':self.duration_representation(), 'short':True}
 			],
-			'thumb_url':e_dict['thumbnail']
 			}
+		if 'thumbnail' in e_dict:
+			e_hash['thumb_url'] = e_dict['thumbnail']
 		return e_hash
 
 	def messages_hash(self, n=5):
