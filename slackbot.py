@@ -6,6 +6,7 @@ from datetime import datetime
 from utilities import exec_mysql, get_mysql_con
 from redis import StrictRedis
 from msgpack import packb, unpackb
+from json import dumps
 
 class EditorBot(object):
 	def __init__(self, token):
@@ -44,6 +45,8 @@ class EditorBot(object):
 				reply = self.get_data_to_show(message[2:])
 			elif message[1] == 'update':
 				reply = self.execute_update(message[2:])
+			elif message[1] == 'ping':
+				reply = 'pong!'
 			else:
 				reply = 'Unknown command, use "@editor help" for full commands list.'
 			reply = {'message':self.add_usermention(event['user'], reply), 'channel':event['channel']}
@@ -60,11 +63,15 @@ class EditorBot(object):
 		Method for formulating answer to help command.
 		"""
 		if not tokens:
-			return "I will try to help you. Currently working commands:\n- *show* - demonstrate collected and aggregated data;\n- *update* - change some data in the database;\n- *help* - get this help note.\nTo get help on exact command type \"@editor help [command]\"."
+			return "I will try to help you. Supported commands:\n- *show* - demonstrate collected and aggregated data;\n- *update* - change some data in the database;\n- *ping* - check, if I'm alive.\n- *help* - get this help note.\nTo get help on exact command type \"@editor help [command]\"."
 		elif tokens[0] == 'show':
 			return 'here you are:\n'+self.get_data_to_show.__doc__
 		elif tokens[0] == 'update':
 			return 'here you are:\n'+self.execute_update.__doc__
+		elif tokens[0] == 'help':
+			return 'Help on help? Srsly? What are you expecting?'
+		elif tokens[0] == 'ping':
+			return 'Simple command to check my availability.'
 		else:
 			return 'I don\'t know such command. Sorry, bro.'
 
@@ -150,13 +157,12 @@ class SlackEvent(object):
 			self.messages[item['tweet_id']]['media'] = item['url']
 
 	def event_representation(self):
-		print self.verification, self.validity
 		if self.verification is None:
 			if self.validity:
 				status = 'unconfirmed real'
 			else:
 				status = 'unconfirmed fake'
-		if self.verification:
+		elif self.verification:
 			if self.validity:
 				status = 'confirmed real'
 			else:
@@ -178,7 +184,39 @@ class SlackEvent(object):
 			'messages':self.messages_representation()
 		}
 		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], e_dict['duration'], e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
-		return e_str
+		#return e_str
+		att = {
+			"attachments": [
+				{
+					"fallback": "Required plain-text summary of the attachment.",
+
+					"color": "#36a64f",
+
+					"pretext": "Optional text that appears above the attachment block",
+
+					"author_name": "Bobby Tables",
+					"author_link": "http://flickr.com/bobby/",
+					"author_icon": "http://flickr.com/icons/bobby.jpg",
+
+					"title": "Slack API Documentation",
+					"title_link": "https://api.slack.com/",
+
+					"text": "Optional text that appears within the attachment",
+
+					"fields": [
+						{
+							"title": "Priority",
+							"value": "High",
+							"short": false
+						}
+					],
+
+					"image_url": "http://my-website.com/path/to/image.jpg",
+					"thumb_url": "http://example.com/path/to/thumb.png"
+				}
+			]
+		}
+		return dumps(att)
 
 	def messages_representation(self):
 		msgs = []
