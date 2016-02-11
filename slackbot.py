@@ -79,7 +79,10 @@ class EditorBot(object):
 		if tokens[0] == 'eventlist':
 			return 'This method is not yet implemented.'
 		elif tokens[0] == 'event':
-			return self.get_event(tokens[1])
+			if len(tokens) == 1:
+				return 'Specify event id to show.'
+			else:
+				return self.get_event(tokens[1])
 		elif tokens[0] == 'statistics':
 			return 'This method is not yet implemented.'
 		else:
@@ -108,7 +111,7 @@ class EditorBot(object):
 			except IndexError:
 				return 'I don\'t know event with such id. :('
 		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
-		return str(event.event_representation())
+		return event.event_representation()
 
 class SlackEvent(object):
 	"""
@@ -173,7 +176,8 @@ class SlackEvent(object):
 			'status':status,
 			'messages':self.messages_representation()
 		}
-		return e_dict
+		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], e_dict['duration'], e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
+		return e_str
 
 	def messages_representation(self):
 		msgs = []
