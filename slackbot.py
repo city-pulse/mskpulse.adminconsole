@@ -127,10 +127,10 @@ class SlackEvent(object):
 	def load_dump(self, dump):
 		event_data = unpackb(dump)
 		self.id = event_data['id']
-		self.created = datetime.fromtimestamp(data['created'])
-		self.updated = datetime.fromtimestamp(data['updated'])
-		self.verification = data['verification']
-		self.messages = {x['id']:x for x in data['messages']}
+		self.created = datetime.fromtimestamp(event_data['created'])
+		self.updated = datetime.fromtimestamp(event_data['updated'])
+		self.verification = event_data['verification']
+		self.messages = {x['id']:x for x in event_data['messages']}
 		self.get_messages_data()
 		self.get_media_data()
 
