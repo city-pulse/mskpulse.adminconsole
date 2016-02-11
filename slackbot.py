@@ -129,7 +129,6 @@ class SlackEvent(object):
 
 	def load_dump(self, dump):
 		event_data = unpackb(dump)
-		print event_data
 		self.id = event_data['id']
 		self.created = datetime.fromtimestamp(event_data['created'])
 		self.updated = datetime.fromtimestamp(event_data['updated'])
@@ -151,6 +150,7 @@ class SlackEvent(object):
 			self.messages[item['tweet_id']]['media'] = item['url']
 
 	def event_representation(self):
+		print self.verification, self.validity
 		if self.verification is None:
 			if self.validity:
 				status = 'unconfirmed real'
