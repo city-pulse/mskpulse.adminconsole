@@ -129,6 +129,7 @@ class SlackEvent(object):
 
 	def load_dump(self, dump):
 		event_data = unpackb(dump)
+		print event_data
 		self.id = event_data['id']
 		self.created = datetime.fromtimestamp(event_data['created'])
 		self.updated = datetime.fromtimestamp(event_data['updated'])
