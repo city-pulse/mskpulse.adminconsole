@@ -2,26 +2,10 @@
 from slackclient import SlackClient
 from settings import REDIS_HOST, REDIS_PORT, REDIS_DB, SLACK_TOKEN
 from time import sleep
+from datetime import datetime
 from utilities import exec_mysql, get_mysql_con
 from redis import StrictRedis
-
-"""
-# Bot user: U0LPX4E05
-# Me: U0LQ0H3UG
-[{u'type': u'presence_change', u'user': u'U0LPX4E05', u'presence': u'active'}]
-[{u'type': u'user_typing', u'user': u'U0LQ0H3UG', u'channel': u'D0LPX4E21'}]
-[{u'text': u'This is personal message to you', u'ts': u'1455110541.000002', u'user': u'U0LQ0H3UG', u'team': u'T0LPZMP55', u'type': u'message', u'channel': u'D0LPX4E21'}]
-[{u'text': u'This is message in random channel', u'ts': u'1455110559.000007', u'user': u'U0LQ0H3UG', u'team': u'T0LPZMP55', u'type': u'message', u'channel': u'C0LPWCSLV'}]
-[{u'text': u'Message in newsroom', u'ts': u'1455110589.000002', u'user': u'U0LQ0H3UG', u'team': u'T0LPZMP55', u'type': u'message', u'channel': u'C0LQ4S7SR'}]
-[{u'event_ts': u'1455110617.070971', u'ts': u'1455110617.000003', u'subtype': u'message_deleted', u'hidden': True, u'deleted_ts': u'1455110589.000002', u'type': u'message', u'channel': u'C0LQ4S7SR', u'previous_message': {u'text': u'Message in newsroom', u'type': u'message', u'user': u'U0LQ0H3UG', u'ts': u'1455110589.000002'}}]
-
-{u'text': u'<@U0LPX4E05>: show eventlist for today', u'ts': u'1455112532.000005', u'user': u'U0LQ0H3UG', u'team': u'T0LPZMP55', u'type': u'message', u'channel': u'C0LQ4S7SR'} 
-<@U0LPX4E05>: show eventlist for today
-{u'text': u'<!channel>:', u'ts': u'1455112545.000006', u'user': u'U0LQ0H3UG', u'team': u'T0LPZMP55', u'type': u'message', u'channel': u'C0LQ4S7SR'} 
-<!channel>:
-
-"""
-
+from msgpack import packb, unpackb
 
 class EditorBot(object):
 	def __init__(self, token):
@@ -76,11 +60,13 @@ class EditorBot(object):
 		Method for formulating answer to help command.
 		"""
 		if not tokens:
-			return "I will try to help you. Currently working commands:\n- *show*\n- *update*\n- *help*\nSooner here will be overall help and help for different commands from docstrings."
+			return "I will try to help you. Currently working commands:\n- *show* - demonstrate collected and aggregated data;\n- *update* - change some data in the database;\n- *help* - get this help note.\nTo get help on exact command type \"@editor help [command]\"."
 		elif tokens[0] == 'show':
 			return 'here you are:\n'+self.get_data_to_show.__doc__
 		elif tokens[0] == 'update':
 			return 'here you are:\n'+self.execute_update.__doc__
+		else:
+			return 'I don\'t know such command. Sorry, bro.'
 
 	def get_data_to_show(self, tokens):
 		"""
@@ -91,11 +77,11 @@ class EditorBot(object):
 		- statistics [time interval] - show database stats during specified period.
 		"""
 		if tokens[0] == 'eventlist':
-			pass
+			return 'This method is not yet implemented.'
 		elif tokens[0] == 'event':
-			pass
+			return self.get_event(tokens[1])
 		elif tokens[0] == 'statistics':
-			pass
+			return 'This method is not yet implemented.'
 		else:
 			return 'Unknown object to show. Use "@editor help show" for more info.'
 
@@ -106,68 +92,85 @@ class EditorBot(object):
 		"""
 		return "Currently updates are not executed."
 
+	def get_event(self, event_id):
+		"""
+		Method to look event by id (TBD: part of id) in the SQL and Redis DB's, and return it's full string representation.
+		"""
+		if self.redis.keys("event:{}".format(event_id)):
+			event_dict = redis.hgetall("event:{}".format(event_id))
+			event_dict['start'] = datetime.strptime(event_dict['start'], '%Y-%m-%d %H:%M:%S')
+			event_dict['end'] = datetime.strptime(event_dict['end'], '%Y-%m-%d %H:%M:%S')
+			event_dict['validity'] = int(event_dict['validity'])
+		else:
+			q = '''SELECT * FROM events WHERE id = '{}';'''.format(event_id)
+			try:
+				event_dict = exec_mysql(q, self.mysql)[0][0]
+			except IndexError:
+				return 'I don\'t know event with such id. :('
+		event = SlackEvent(start=event_data['start'], end=event_data['end'], validity=event_data['validity'], description=event_data['description'], dump=event_data['dumps'])
+		return str(event.event_representation())
+
 class SlackEvent(object):
 	"""
 	Event representation for Slack Bot:
 	both short and long.
 	"""
-	def __init__(self, id, start, end, description, dump):
-		self.id = id
+	def __init__(self, start, end, validity, description, dump):
 		self.start = start
 		self.end = end
 		self.description = description
 		self.duration = self.end - self.start
+		self.validity = validity
+		self.mysql = get_mysql_con()
 		self.load_dump(dump)
 
 	def load_dump(self, dump):
-		event_data = loads(dump)
-		self.messages = event_data['messages']
-		if 'compressed' not in event_data.keys() or not event_data['compressed']:
-			for item in event_data['media'].values():
-				self.messages[item['tweet_id']]['media'] = item['url']
-		else:
-			self.get_messages_data()
-			self.get_media_data()
-		self.created = event_data['created']
-		self.updated = event_data['updated']
-		if 'verification' in event_data.keys():
-			self.verification = event_data['verification']
-		if 'validation' in event_data.keys():
-			self.validation = event_data['validation']
-		if 'cores' in event_data.keys():
-			self.cores = event_data['cores']
+		event_data = unpackb(dump)
+		self.id = event_data['id']
+		self.created = datetime.fromtimestamp(data['created'])
+		self.updated = datetime.fromtimestamp(data['updated'])
+		self.verification = data['verification']
+		self.messages = {x['id']:x for x in data['messages']}
+		self.get_messages_data()
+		self.get_media_data()
 
 	def get_messages_data(self):
-		self.cursor.execute('''SELECT * FROM tweets WHERE id in ({});'''.format(','.join(['"'+str(x)+'"' for x in self.messages.keys()])))
-		data = self.cursor.fetchall()
+		q = '''SELECT * FROM tweets WHERE id in ({});'''.format(','.join(['"'+str(x)+'"' for x in self.messages.keys()]))
+		data = exec_mysql(q, self.mysql)[0]
 		for item in data:
-			self.messages[item[0]]['id'] = item[0]
-			self.messages[item[0]]['text'] = item[1]
-			self.messages[item[0]]['lat'] = item[2]
-			self.messages[item[0]]['lng'] = item[3]
-			self.messages[item[0]]['tstamp'] = item[4]
-			self.messages[item[0]]['user'] = item[5]
-			self.messages[item[0]]['network'] = item[6]
-			self.messages[item[0]]['iscopy'] = item[7]
+			item['tstamp'] = item['tstamp'].strftime('%Y-%m-%d %H:%M:%S')
+			self.messages[item['id']].update(item)
 
 	def get_media_data(self):
-		self.cursor.execute('''SELECT * FROM media WHERE tweet_id in ({});'''.format(','.join(['"'+str(x)+'"' for x in self.messages.keys()])))
-		data = self.cursor.fetchall()
+		q = '''SELECT * FROM media WHERE tweet_id in ({});'''.format(','.join(['"'+str(x)+'"' for x in self.messages.keys()]))
+		data = exec_mysql(q, self.mysql)[0]
 		for item in data:
-			self.messages[item[1]]['media'] = item[2]
+			self.messages[item['tweet_id']]['media'] = item['url']
 
 	def event_representation(self):
+		if self.verification is None:
+			if self.validity:
+				status = 'unconfirmed real'
+			else:
+				status = 'unconfirmed fake'
 		if self.verification:
-			status = 'real'
+			if self.validity:
+				status = 'confirmed real'
+			else:
+				status = 'misdefined as fake'
 		else:
-			status = 'presumptive'
+			if self.validity:
+				status = 'misdefined as real'
+			else:
+				status = 'confirmed fake'
 		e_dict = {
-			'start':self.start,
-			'end':self.end,
-			'created':self.created,
+			'start':self.start.strftime('%Y-%m-%d %H:%M:%S'),
+			'end':self.end.strftime('%Y-%m-%d %H:%M:%S'),
+			'created':self.created.strftime('%Y-%m-%d %H:%M:%S'),
+			'updated':self.updated.strftime('%Y-%m-%d %H:%M:%S'),
 			'id':self.id,
 			'description':self.description,
-			'duration':self.duration,
+			'duration':self.duration.total_seconds(),
 			'status':status,
 			'messages':self.messages_representation()
 		}
