@@ -207,7 +207,7 @@ class SlackEvent(object):
 						{
 							"title": "Priority",
 							"value": "High",
-							"short": false
+							"short": False
 						}
 					],
 
