@@ -253,7 +253,7 @@ class SlackEvent(object):
 	def messages_hash(self, n=5):
 		msgs = []
 		m_list = self.messages_representation()
-		if len(e_dict['messages']) < n:
+		if len(m_list) < n:
 			n = len(e_dict['messages'])
 		for i in range(n):
 			m_hash = {
