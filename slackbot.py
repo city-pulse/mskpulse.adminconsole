@@ -97,7 +97,7 @@ class EditorBot(object):
 		Method to look event by id (TBD: part of id) in the SQL and Redis DB's, and return it's full string representation.
 		"""
 		if self.redis.keys("event:{}".format(event_id)):
-			event_dict = redis.hgetall("event:{}".format(event_id))
+			event_dict = self.redis.hgetall("event:{}".format(event_id))
 			event_dict['start'] = datetime.strptime(event_dict['start'], '%Y-%m-%d %H:%M:%S')
 			event_dict['end'] = datetime.strptime(event_dict['end'], '%Y-%m-%d %H:%M:%S')
 			event_dict['validity'] = int(event_dict['validity'])
