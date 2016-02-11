@@ -271,7 +271,7 @@ class SlackEvent(object):
 		return msgs
 
 	def duration_representation(self):
-		val = int(self.duration)
+		val = int(self.duration.total_seconds())
 		secs = val%60
 		mins = val//60
 		if not mins:
