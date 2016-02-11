@@ -25,7 +25,9 @@ class EditorBot(object):
 				if event:
 					reply = self.prepare_reply(event[0])
 					if reply:
-						self.socket.rtm_send_message(reply['channel'], reply['message'])
+						self.socket.api_call('chat.postMessage', post_data = reply)
+					#elif reply:
+					#	self.socket.rtm_send_message(reply['channel'], reply['message'])
 				sleep(1)
 		else:
 			print "Connection failed"
@@ -39,17 +41,19 @@ class EditorBot(object):
 			return
 		if event['text'].startswith('<@U0LPX4E05>'):
 			message = [x.strip() for x in event['text'].split(' ')]
+			reply = {'channel':event['channel']}
 			if message[1] == 'help':
-				reply = self.get_help(message[2:])
+				reply['text'] = self.add_usermention(event['user'], self.get_help(message[2:]))
 			elif message[1] == 'show':
-				reply = self.get_data_to_show(message[2:])
+				reply.update(self.get_data_to_show(message[2:]))
+				if 'text' in reply:
+					reply['text'] = self.add_usermention(event['user'], reply['text'])
 			elif message[1] == 'update':
-				reply = self.execute_update(message[2:])
+				reply['text'] = self.add_usermention(event['user'], self.execute_update(message[2:]))
 			elif message[1] == 'ping':
-				reply = 'pong!'
+				reply['text'] = self.add_usermention(event['user'], 'pong!')
 			else:
-				reply = 'Unknown command, use "@editor help" for full commands list.'
-			reply = {'message':self.add_usermention(event['user'], reply), 'channel':event['channel']}
+				reply['text'] = self.add_usermention(event['user'], 'Unknown command, use "@editor help" for full commands list.')
 			return reply
 
 	def add_usermention(self, userid, text):
@@ -84,16 +88,16 @@ class EditorBot(object):
 		- statistics [time interval] - show database stats during specified period.
 		"""
 		if tokens[0] == 'eventlist':
-			return 'This method is not yet implemented.'
+			return {'text':'This method is not yet implemented.'}
 		elif tokens[0] == 'event':
 			if len(tokens) == 1:
-				return 'Specify event id to show.'
+				return {'text': 'Specify event id to show.'}
 			else:
 				return self.get_event(tokens[1])
 		elif tokens[0] == 'statistics':
-			return 'This method is not yet implemented.'
+			return {'text':'This method is not yet implemented.'}
 		else:
-			return 'Unknown object to show. Use "@editor help show" for more info.'
+			return {'text':'Unknown object to show. Use "@editor help show" for more info.'}
 
 	def execute_update(self, tokens):
 		"""
@@ -116,9 +120,9 @@ class EditorBot(object):
 			try:
 				event_dict = exec_mysql(q, self.mysql)[0][0]
 			except IndexError:
-				return 'I don\'t know event with such id. :('
+				return {'text':'I don\'t know event with such id. :('}
 		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
-		return event.event_representation()
+		return {'text':'here you are:', 'attachments': [event.event_hash()]}
 
 class SlackEvent(object):
 	"""
@@ -183,40 +187,11 @@ class SlackEvent(object):
 			'status':status,
 			'messages':self.messages_representation()
 		}
-		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], e_dict['duration'], e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
-		#return e_str
-		att = {
-			"attachments": [
-				{
-					"fallback": "Required plain-text summary of the attachment.",
-
-					"color": "#36a64f",
-
-					"pretext": "Optional text that appears above the attachment block",
-
-					"author_name": "Bobby Tables",
-					"author_link": "http://flickr.com/bobby/",
-					"author_icon": "http://flickr.com/icons/bobby.jpg",
-
-					"title": "Slack API Documentation",
-					"title_link": "https://api.slack.com/",
-
-					"text": "Optional text that appears within the attachment",
-
-					"fields": [
-						{
-							"title": "Priority",
-							"value": "High",
-							"short": False
-						}
-					],
-
-					"image_url": "http://my-website.com/path/to/image.jpg",
-					"thumb_url": "http://example.com/path/to/thumb.png"
-				}
-			]
-		}
-		return dumps(att)
+		for msg in e_dict['messages']:
+			if 'media' in msg:
+				e_dict['thumbnail'] = msg['media']
+				break
+		return e_dict
 
 	def messages_representation(self):
 		msgs = []
@@ -229,6 +204,38 @@ class SlackEvent(object):
 					e['media'] = item['media']
 				msgs.append(e)
 		return msgs
+
+	def event_string(self):
+		e_dict = self.event_representation()
+		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], e_dict['duration'], e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
+		return e_str
+
+	def event_hash(self):
+		e_dict = event_representation()
+		if e_dict['status'] == 'confirmed real':
+			color = '#98D1CB'
+		elif e_dict['status'] == 'confirmed fake':
+			color = '#F08159'
+		elif e_dict['status'] == 'unconfirmed real':
+			color = '#006D5C'
+		elif e_dict['status'] == 'unconfirmed fake':
+			color = '#EC6839'
+		else:
+			color = '#FF0000'
+
+		e_hash = {
+			'fallback':self.event_string(),
+			'color': color,
+			'title': 'Event #{}'.format(self.id),
+			'text': self.description,
+			'fields':[
+				{'title':'Status', 'value':e_dict['status'], 'short':True},
+				{'title':'Messages', 'value':len(e_dict['messages']), 'short':True},
+				{'title':'Duration', 'value':int(e_dict['duration']), 'short':True}
+			],
+			'thumb_url':e_dict['thumbnail']
+			}
+		return e_hash
 
 if __name__ == '__main__':
 	bot =  EditorBot(SLACK_TOKEN)
