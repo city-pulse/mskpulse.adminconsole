@@ -86,7 +86,7 @@ class EditorBot(object):
 				n = int(tokens[1])
 			except:
 				n = 1
-			q = 'SELECT * FROM events WHERE verification IS NULL AND description != '' ORDER BY end DESC LIMIT {};'.format(n)
+			q = 'SELECT * FROM events WHERE verification IS NULL AND description != "" ORDER BY end DESC LIMIT {};'.format(n)
 			data = exec_mysql(q, self.mysql)[0]
 			attachments = []
 			for event_dict in data:
