@@ -23,7 +23,7 @@ class EditorBot(object):
 		Infinity loop for SlackBot script: on every step it looks for new messages in allowed channels,
 		reacts on them, and looks for new events in Redis database.
 		"""
-		if self.socket.rtm_connect():
+		if not self.socket.rtm_connect():
 			while True:
 				event = self.socket.rtm_read()
 				if event:
@@ -41,6 +41,7 @@ class EditorBot(object):
 			if key[6:] in self.context['known_events']:
 				continue
 			event_data = self.redis.hgetall(key)
+			print event_data
 			if event_data['verification'] == '1' or (event_data['verification'] == 'NULL' and event_data['validity'] == 1):
 				event_data['start'] = datetime.strptime(event_data['start'], '%Y-%m-%d %H:%M:%S')
 				event_data['end'] = datetime.strptime(event_data['end'], '%Y-%m-%d %H:%M:%S')
