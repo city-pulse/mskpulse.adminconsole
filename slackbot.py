@@ -13,6 +13,10 @@ class EditorBot(object):
 		self.socket = SlackClient(token)
 		self.redis = StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
 		self.mysql = get_mysql_con()
+		self.context = {
+			'last_mentioned_event':None,
+			'known_events':[],
+		}
 
 	def run(self):
 		"""
@@ -26,11 +30,29 @@ class EditorBot(object):
 					reply = self.prepare_reply(event[0])
 					if reply:
 						self.socket.api_call('chat.postMessage', **reply)
-					#elif reply:
-					#	self.socket.rtm_send_message(reply['channel'], reply['message'])
+				self.get_new_events()
 				sleep(1)
 		else:
 			print "Connection failed"
+
+	def get_new_events(self):
+		events_to_pub = []
+		for key in self.redis.keys("event:*"):
+			if key[6:] in self.context['known_events']:
+				continue
+			event_data = self.redis.hgetall(key)
+			if event_data['verification'] == '1' or (event_data['verification'] == 'NULL' AND event_data['validity'] == 1):
+				event_data['start'] = datetime.strptime(event_data['start'], '%Y-%m-%d %H:%M:%S')
+				event_data['end'] = datetime.strptime(event_data['end'], '%Y-%m-%d %H:%M:%S')
+				event_data['validity'] = int(event_data['validity'])
+				event = SlackEvent(start=event_data['start'], end=event_data['end'], validity=event_data['validity'], description=event_data['description'], dump=event_data['dumps'])
+				events_to_pub.append(event.event_hash())
+				self.context['known_events'].append(event.id)
+				self.context['last_mentioned_event'] = event.id
+				if len(self.context['known_events']) >= 200:
+					self.context['known_events'].pop(0)
+		if events_to_pub:
+			self.socket.api_call('chat.postMessage', channel = 'C0LQ4S7SR', as_user = True, text = '<!channel>!!! ALARM!!! New event(s)!!!', attachments = dumps(events_to_pub))
 
 	def prepare_reply(self, event):
 		"""
@@ -123,6 +145,7 @@ class EditorBot(object):
 			except IndexError:
 				return {'text':'I don\'t know event with such id. :('}
 		event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
+		self.context['last_mentioned_event'] = event.id
 		if len(tokens) == 1 or tokens[1] == 'short':
 			attachments = [event.event_hash()]
 		elif tokens[1] == 'top':
