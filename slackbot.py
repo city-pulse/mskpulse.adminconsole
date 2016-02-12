@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from slackclient import SlackClient
+from MySQLdb import escape_string
 from settings import REDIS_HOST, REDIS_PORT, REDIS_DB, SLACK_TOKEN
 from time import sleep
 from datetime import datetime
@@ -100,17 +101,16 @@ class EditorBot(object):
 				try:
 					q = 'SELECT dumps FROM events WHERE id = "{}";'.format(self.context['last_mentioned_event'])
 					data = unpackb(exec_mysql(q, self.mysql)[0][0]['dumps'])
-					if token[1] == 'real':
+					if tokens[1] == 'real':
 						ver = 1
-					elif token[1] == 'fake':
+					elif tokens[1] == 'fake':
 						ver = 0
 					else:
 						return {'text':'Unknown verification status.'}
 					data['verification'] = ver
-					q = b'''UPDATE events SET dumps = "{}" verification = {} WHERE id = "{}";'''.format(escape_string(packb(data)), ver, self.context['last_mentioned_event'])
+					q = b'''UPDATE events SET dumps = "{}", verification = {} WHERE id = "{}";'''.format(escape_string(packb(data)), ver, self.context['last_mentioned_event'])
 					exec_mysql(q, self.mysql)
-					return {'text':'Event #{} was verified as "{}"'.format(self.context['last_mentioned_event'], token[1])}
-
+					return {'text':'Event #{} was verified as "{}"'.format(self.context['last_mentioned_event'], tokens[1])}
 				except:
 					return {'text':'Something went wrong. Exception on verification.'}
 		return {'text':'Not suuported yet type of verification.'}
@@ -233,7 +233,7 @@ class SlackEvent(object):
 		for item in data:
 			self.messages[item['tweet_id']]['media'] = item['url']
 
-	def event_representation(self):
+	def event_representation(self, not_zero = True):
 		if self.verification is None:
 			if self.validity:
 				status = 'unconfirmed real'
@@ -258,7 +258,7 @@ class SlackEvent(object):
 			'description':self.description,
 			'duration':self.duration.total_seconds(),
 			'status':status,
-			'messages':self.messages_representation()
+			'messages':self.messages_representation(not_zero = not_zero)
 		}
 		for msg in e_dict['messages']:
 			if 'media' in msg:
@@ -266,22 +266,29 @@ class SlackEvent(object):
 				break
 		return e_dict
 
-	def messages_representation(self):
+	def messages_representation(self, not_zero = True):
 		msgs = []
 		nets = {1:'Twitter', 2:'Instagram', 3:'VKontakte'}
 		messages = sorted(self.messages.values(), key = lambda x:x['token_score'], reverse=True)
 		for item in messages:
-			if item['token_score'] > 0:
-				e = {'text':item['text'], 'network':nets[item['network']], 'time': item['tstamp'].strftime('%d %b %H:%M')}
-				if 'media' in item.keys():
-					e['media'] = item['media']
-				msgs.append(e)
+			if item['token_score'] == 0 and not_zero:
+				continue
+			e = {'text':item['text'], 'network':nets[item['network']], 'time': item['tstamp'].strftime('%d %b %H:%M'), 'author':item['user']}
+			if 'media' in item.keys():
+				e['media'] = item['media']
+			msgs.append(e)
 		return msgs
 
 	def event_string(self):
 		e_dict = self.event_representation()
 		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}'.format(e_dict['id'], self.duration_representation(), e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
 		return e_str
+
+	def event_verify_string(self):
+		e_dict = self.event_representation(not_zero=False)
+		e_str = 'Event #{}\nDuration: {} ({} - {})\nMessages: {}\nStatus: {}\n=============\n'.format(e_dict['id'], self.duration_representation(), e_dict['start'], e_dict['end'], len(e_dict['messages']), e_dict['status'])
+		msgs = '\n\n'.join(['{}: {} / {} / {}'.format(x['author'], x['text'], x['network'], x['time']) for x in e_dict['messages'][:25]])
+		return e_str+msgs
 
 	def event_hash(self):
 		e_dict = self.event_representation()
