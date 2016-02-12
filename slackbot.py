@@ -83,19 +83,11 @@ class EditorBot(object):
 
 	def verify_event(self, tokens):
 		if tokens[0] == 'get':
-			try:
-				n = int(tokens[1])
-			except:
-				n = 1
-			q = 'SELECT * FROM events WHERE verification IS NULL AND description != "" ORDER BY end DESC LIMIT {};'.format(n)
-			data = exec_mysql(q, self.mysql)[0]
-			attachments = []
-			for event_dict in data:
-				event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
-				self.context['last_mentioned_event'] = event.id
-				attachments.append(event.event_hash())
-			if attachments:
-				return {'text':'Verify this:', 'attachments':dumps(attachments)}
+			q = 'SELECT * FROM events WHERE verification IS NULL AND description != "" ORDER BY end DESC LIMIT 1;'
+			event_dict = exec_mysql(q, self.mysql)[0][0]
+			event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
+			self.context['last_mentioned_event'] = event.id
+			return {'text':'Verify this:\n'+event.verify_string(), 'attachments':dumps(attachments)}
 		elif tokens[0] == 'last':
 			if self.context['last_mentioned_event']:
 				try:
