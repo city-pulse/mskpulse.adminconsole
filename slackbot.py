@@ -41,7 +41,7 @@ class EditorBot(object):
 			if key[6:] in self.context['known_events']:
 				continue
 			event_data = self.redis.hgetall(key)
-			if event_data['verification'] == '1' or (event_data['verification'] == 'NULL' AND event_data['validity'] == 1):
+			if event_data['verification'] == '1' or (event_data['verification'] == 'NULL' and event_data['validity'] == 1):
 				event_data['start'] = datetime.strptime(event_data['start'], '%Y-%m-%d %H:%M:%S')
 				event_data['end'] = datetime.strptime(event_data['end'], '%Y-%m-%d %H:%M:%S')
 				event_data['validity'] = int(event_data['validity'])
