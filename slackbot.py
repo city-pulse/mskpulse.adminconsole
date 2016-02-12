@@ -278,7 +278,7 @@ class SlackEvent(object):
 		msgs = []
 		m_list = self.messages_representation()
 		if len(m_list) < n:
-			n = len(e_dict['messages'])
+			n = len(m_list)
 		for i in range(n):
 			m_hash = {
 				'fallback':m_list[i]['text'],
