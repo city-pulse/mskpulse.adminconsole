@@ -72,11 +72,48 @@ class EditorBot(object):
 					reply['text'] = self.add_usermention(event['user'], reply['text'])
 			elif message[1] == 'update':
 				reply['text'] = self.add_usermention(event['user'], self.execute_update(message[2:]))
+			elif message[1] == 'verify':
+				reply.update(self.verify_event(message[2:]))
 			elif message[1] == 'ping':
 				reply['text'] = self.add_usermention(event['user'], 'pong!')
 			else:
 				reply['text'] = self.add_usermention(event['user'], 'Unknown command, use "@editor help" for full commands list.')
 			return reply
+
+	def verify_event(self, tokens):
+		if tokens[0] == 'get':
+			try:
+				n = int(tokens[1])
+			except:
+				n = 1
+			q = 'SELECT * FROM events WHERE verification IS NULL ORDER BY end DESC LIMIT {};'.format(n)
+			data = exec_mysql(q, self.mysql)[0]
+			attachments = []
+			for event_dict in data:
+				event = SlackEvent(start=event_dict['start'], end=event_dict['end'], validity=event_dict['validity'], description=event_dict['description'], dump=event_dict['dumps'])
+				self.context['last_mentioned_event'] = event.id
+				attachments.append(event.event_hash())
+			if attachments:
+				return {'text':'Verify this:', 'attachments':dumps(attachments)}
+		elif tokens[0] == 'last':
+			if self.context['last_mentioned_event']:
+				try:
+					q = 'SELECT dumps FROM events WHERE id = "{}";'.format(self.context['last_mentioned_event'])
+					data = unpackb(exec_mysql(q, self.mysql)[0][0]['dumps'])
+					if token[1] == 'real':
+						ver = 1
+					elif token[1] == 'fake':
+						ver = 0
+					else:
+						return {'text':'Unknown verification status.'}
+					data['verification'] = ver
+					q = b'''UPDATE events SET dumps = "{}" verification = {} WHERE id = "{}";'''.format(escape_string(packb(data)), ver, self.context['last_mentioned_event'])
+					exec_mysql(q, self.mysql)
+					return {'text':'Event #{} was verified as "{}"'.format(self.context['last_mentioned_event'], token[1])}
+
+				except:
+					return {'text':'Something went wrong. Exception on verification.'}
+		return {'text':'Not suuported yet type of verification.'}
 
 	def add_usermention(self, userid, text):
 		"""
